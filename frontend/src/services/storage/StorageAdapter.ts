@@ -20,9 +20,10 @@ export interface IStorageAdapter<T = any> {
 
   getUserAccounts(): Promise<UserAccount[]>;
   createUserAccount(account: Partial<UserAccount>): Promise<UserAccount>;
-  toggleAccountStatus(username: string): Promise<UserAccount>;
-  updatePassword(username: string, newPassword: string): Promise<UserAccount>;
-  deleteUserAccount(username: string): Promise<boolean>;
+  toggleAccountStatus(usernameOrId: string): Promise<UserAccount>;
+  updatePassword(usernameOrId: string, newPassword: string): Promise<UserAccount>;
+  updateUserAccount(usernameOrId: string, updates: Partial<UserAccount>): Promise<UserAccount>;
+  deleteUserAccount(usernameOrId: string): Promise<boolean>;
 }
 
 export type StorageAdapter<T = any> = IStorageAdapter<T>;

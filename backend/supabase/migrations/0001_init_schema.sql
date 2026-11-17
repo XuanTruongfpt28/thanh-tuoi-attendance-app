@@ -38,17 +38,23 @@ create table if not exists shift_configs (
 -- 4. user_accounts — Tài khoản đăng nhập (admin / employee)
 -- --------------------------------------------------------------
 create table if not exists user_accounts (
-  id           text primary key,
-  username     text not null unique,
-  password     text not null,          -- xem ghi chú bảo mật trong backend/README.md
-  role         text not null check (role in ('admin', 'employee')),
-  employee_id  text references employees(id) on delete set null,
-  name         text not null,
-  branch_id    text references branches(id) on delete set null,
-  position     text,
-  is_active    boolean not null default true,
-  created_at   timestamptz not null default now()
+  id            text primary key,
+  username      text not null unique,
+  password      text not null,          -- xem ghi chú bảo mật trong backend/README.md
+  role          text not null check (role in ('admin', 'employee')),
+  employee_id   text references employees(id) on delete set null,
+  name          text not null,
+  branch_id     text references branches(id) on delete set null,
+  position      text,
+  phone         text,
+  is_active     boolean not null default true,
+  created_at    timestamptz not null default now(),
+  last_login_at timestamptz
 );
+
+-- Hỗ trợ thêm cột nếu bảng user_accounts đã tồn tại từ trước
+alter table user_accounts add column if not exists phone text;
+alter table user_accounts add column if not exists last_login_at timestamptz;
 
 -- --------------------------------------------------------------
 -- 5. attendance_records — Bản ghi chấm công (bảng lớn nhất, sẽ tăng dần)
@@ -63,10 +69,10 @@ create table if not exists attendance_records (
   check_in_time         text,           -- "HH:mm"
   check_out_time        text,           -- "HH:mm"
   check_in_status       text check (check_in_status in ('on_time','late')),
-  late_minutes          integer,
+  late_minutes          integer default 0,
   check_out_status      text check (check_out_status in ('on_time','early_leave','overtime')),
-  early_leave_minutes   integer,
-  overtime_minutes      integer,
+  early_leave_minutes   integer default 0,
+  overtime_minutes      integer default 0,
   note                  text,
   check_in_photo        text            -- Base64 JPEG (khuyến nghị: chuyển sang Supabase Storage sau này)
 );
@@ -80,10 +86,7 @@ create index if not exists idx_attendance_employee
 --  Row Level Security
 --  MVP: mở quyền đọc/ghi cho mọi client dùng anon key, TƯƠNG ĐƯƠNG
 --  mức bảo mật hiện tại (app quản lý quyền admin/employee ở phía
---  client, mật khẩu lưu dạng plaintext trong localStorage).
---  ⚠️ Trước khi lên production thật, nên chuyển sang Supabase Auth
---  + policies theo auth.uid() (xem mục "Nâng cấp bảo mật" trong
---  backend/README.md).
+--  client).
 -- ================================================================
 alter table branches            enable row level security;
 alter table employees           enable row level security;
@@ -91,8 +94,21 @@ alter table shift_configs       enable row level security;
 alter table user_accounts       enable row level security;
 alter table attendance_records  enable row level security;
 
-create policy "anon full access - branches"           on branches           for all using (true) with check (true);
-create policy "anon full access - employees"          on employees          for all using (true) with check (true);
-create policy "anon full access - shift_configs"      on shift_configs      for all using (true) with check (true);
-create policy "anon full access - user_accounts"      on user_accounts      for all using (true) with check (true);
-create policy "anon full access - attendance_records" on attendance_records for all using (true) with check (true);
+do $$
+begin
+  if not exists (select 1 from pg_policies where policyname = 'anon full access - branches') then
+    create policy "anon full access - branches" on branches for all using (true) with check (true);
+  end if;
+  if not exists (select 1 from pg_policies where policyname = 'anon full access - employees') then
+    create policy "anon full access - employees" on employees for all using (true) with check (true);
+  end if;
+  if not exists (select 1 from pg_policies where policyname = 'anon full access - shift_configs') then
+    create policy "anon full access - shift_configs" on shift_configs for all using (true) with check (true);
+  end if;
+  if not exists (select 1 from pg_policies where policyname = 'anon full access - user_accounts') then
+    create policy "anon full access - user_accounts" on user_accounts for all using (true) with check (true);
+  end if;
+  if not exists (select 1 from pg_policies where policyname = 'anon full access - attendance_records') then
+    create policy "anon full access - attendance_records" on attendance_records for all using (true) with check (true);
+  end if;
+end $$;

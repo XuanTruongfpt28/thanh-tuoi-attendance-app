@@ -23,6 +23,7 @@ export function Header({
   onOpenChangePassword,
   onQuickSwitch,
 }: HeaderProps) {
+  const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
   const isAdmin = currentUser.role === 'admin';
   const branchObj = DEFAULT_BRANCHES.find((b) => b.id === currentUser.branchId);
   const branchName = branchObj ? branchObj.name : currentUser.branchId;
@@ -86,21 +87,23 @@ export function Header({
 
         {/* User Profile & Actions */}
         <div className="flex items-center justify-between gap-3 border-t border-[var(--color-border)] pt-2 lg:border-t-0 lg:pt-0">
-          {/* Quick Demo Switcher */}
-          <div className="hidden sm:block">
-            <select
-              value={currentUser.username}
-              onChange={(e) => onQuickSwitch(e.target.value)}
-              title="Chuyển nhanh tài khoản để test thử"
-              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1.5 text-[11px] font-medium text-[var(--color-ink)] outline-none focus:border-[var(--color-primary)] cursor-pointer"
-            >
-              {accounts.map((acc) => (
-                <option key={acc.id} value={acc.username}>
-                  {acc.role === 'admin' ? '👑 Admin' : `👤 ${acc.name} (${acc.employeeId || 'NV'})`}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Quick Demo Switcher (Chỉ hiển thị khi VITE_DEMO_MODE=true) */}
+          {isDemoMode && (
+            <div className="hidden sm:block">
+              <select
+                value={currentUser.username}
+                onChange={(e) => onQuickSwitch(e.target.value)}
+                title="Chuyển nhanh tài khoản để test thử"
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1.5 text-[11px] font-medium text-[var(--color-ink)] outline-none focus:border-[var(--color-primary)] cursor-pointer"
+              >
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.username}>
+                    {acc.role === 'admin' ? '👑 Admin' : `👤 ${acc.name} (${acc.employeeId || 'NV'})`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* User info & Logout */}
           <div className="flex items-center gap-2">

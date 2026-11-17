@@ -9,6 +9,7 @@ interface LoginScreenProps {
 }
 
 export function LoginScreen({ accounts, onLogin, onQuickSwitch }: LoginScreenProps) {
+  const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -147,62 +148,64 @@ export function LoginScreen({ accounts, onLogin, onQuickSwitch }: LoginScreenPro
             </form>
           </div>
 
-          {/* Quick Demo Selector */}
-          <div className="border-t border-[var(--color-border)] bg-[var(--color-bg)]/60 p-5 sm:p-6">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-soft)]">
-                <Sparkles size={14} className="text-[var(--color-accent)]" /> Đăng nhập nhanh để test
-              </span>
-              <span className="text-[11px] text-[var(--color-ink-soft)]">1 chạm là vào</span>
-            </div>
+          {/* Quick Demo Selector (Chỉ hiển thị khi VITE_DEMO_MODE=true) */}
+          {isDemoMode && (
+            <div className="border-t border-[var(--color-border)] bg-[var(--color-bg)]/60 p-5 sm:p-6">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-soft)]">
+                  <Sparkles size={14} className="text-[var(--color-accent)]" /> Đăng nhập nhanh để test
+                </span>
+                <span className="text-[11px] text-[var(--color-ink-soft)]">1 chạm là vào</span>
+              </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => handleDemoSelect('admin', 'admin123')}
-                className="flex flex-col items-start rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 text-left transition-all hover:border-[var(--color-primary)] hover:shadow-sm"
-              >
-                <div className="flex items-center gap-1.5 font-semibold text-xs text-[var(--color-primary-dark)]">
-                  <ShieldCheck size={14} /> Admin Quản Lý
-                </div>
-                <div className="text-[11px] text-[var(--color-ink-soft)] mt-0.5">admin / admin123</div>
-              </button>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => handleDemoSelect('admin', 'admin123')}
+                  className="flex flex-col items-start rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 text-left transition-all hover:border-[var(--color-primary)] hover:shadow-sm"
+                >
+                  <div className="flex items-center gap-1.5 font-semibold text-xs text-[var(--color-primary-dark)]">
+                    <ShieldCheck size={14} /> Admin Quản Lý
+                  </div>
+                  <div className="text-[11px] text-[var(--color-ink-soft)] mt-0.5">admin / admin123</div>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleDemoSelect('nv001', '123456')}
-                className="flex flex-col items-start rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 text-left transition-all hover:border-[var(--color-primary)] hover:shadow-sm"
-              >
-                <div className="flex items-center gap-1.5 font-semibold text-xs text-[var(--color-ink)]">
-                  <UserCheck size={14} /> NV Văn An (Chợ Mới)
-                </div>
-                <div className="text-[11px] text-[var(--color-ink-soft)] mt-0.5">nv001 / 123456</div>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => handleDemoSelect('nv001', '123456')}
+                  className="flex flex-col items-start rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 text-left transition-all hover:border-[var(--color-primary)] hover:shadow-sm"
+                >
+                  <div className="flex items-center gap-1.5 font-semibold text-xs text-[var(--color-ink)]">
+                    <UserCheck size={14} /> NV Văn An (Chợ Mới)
+                  </div>
+                  <div className="text-[11px] text-[var(--color-ink-soft)] mt-0.5">nv001 / 123456</div>
+                </button>
+              </div>
 
-            {/* Account selector dropdown */}
-            <div className="mt-3">
-              <select
-                onChange={(e) => {
-                  if (e.target.value) {
-                    onQuickSwitch(e.target.value);
-                  }
-                }}
-                defaultValue=""
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-ink)] outline-none focus:border-[var(--color-primary)]"
-              >
-                <option value="" disabled>
-                  Hoặc chọn nhanh tài khoản khác trong danh sách...
-                </option>
-                {accounts.map((acc) => (
-                  <option key={acc.id} value={acc.username}>
-                    {acc.role === 'admin' ? '👑 [Admin]' : `👤 [${acc.employeeId || 'NV'}]`}{' '}
-                    {acc.name} ({acc.username}) {!acc.isActive ? '- ĐANG BỊ KHOÁ' : ''}
+              {/* Account selector dropdown */}
+              <div className="mt-3">
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      onQuickSwitch(e.target.value);
+                    }
+                  }}
+                  defaultValue=""
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-ink)] outline-none focus:border-[var(--color-primary)]"
+                >
+                  <option value="" disabled>
+                    Hoặc chọn nhanh tài khoản khác trong danh sách...
                   </option>
-                ))}
-              </select>
+                  {accounts.map((acc) => (
+                    <option key={acc.id} value={acc.username}>
+                      {acc.role === 'admin' ? '👑 [Admin]' : `👤 [${acc.employeeId || 'NV'}]`}{' '}
+                      {acc.name} ({acc.username}) {!acc.isActive ? '- ĐANG BỊ KHOÁ' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer info */}

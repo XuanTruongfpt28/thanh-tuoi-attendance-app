@@ -13,47 +13,40 @@ export const createEmployeeAccount = async (accountData: Partial<UserAccount>): 
   return await adapter.createUserAccount(accountData);
 };
 
-export const updateAccount = async (username: string, updates: Partial<UserAccount>): Promise<UserAccount> => {
-  if (typeof updates.isActive === 'boolean') {
-    await adapter.toggleAccountStatus(username);
-  }
-  if ((updates as any).password) {
-    await adapter.updatePassword(username, (updates as any).password);
-  }
-  const all = await adapter.getUserAccounts();
-  return all.find((a) => a.username === username) || (updates as UserAccount);
+export const updateAccount = async (idOrUsername: string, updates: Partial<UserAccount>): Promise<UserAccount> => {
+  return await adapter.updateUserAccount(idOrUsername, updates);
 };
 
-export const toggleAccountLock = async (username: string): Promise<UserAccount> => {
-  return await adapter.toggleAccountStatus(username);
+export const toggleAccountLock = async (idOrUsername: string): Promise<UserAccount> => {
+  return await adapter.toggleAccountStatus(idOrUsername);
 };
 
-export const resetPassword = async (username: string, newPass: string): Promise<UserAccount> => {
-  return await adapter.updatePassword(username, newPass);
+export const resetPassword = async (idOrUsername: string, newPass: string): Promise<UserAccount> => {
+  return await adapter.updatePassword(idOrUsername, newPass);
 };
 
 export const changePersonalPassword = async (
-  username: string,
+  idOrUsername: string,
   oldPass: string,
   newPass: string
 ): Promise<boolean> => {
   const accounts = await adapter.getUserAccounts();
-  const current = accounts.find((a) => a.username === username);
+  const current = accounts.find((a) => a.id === idOrUsername || a.username === idOrUsername);
   if (!current) throw new Error('Không tìm thấy tài khoản');
   if ((current as any).password && (current as any).password !== oldPass) {
     throw new Error('Mật khẩu cũ không chính xác');
   }
-  await adapter.updatePassword(username, newPass);
+  await adapter.updatePassword(current.id, newPass);
   return true;
 };
 
-export const deleteAccount = async (username: string): Promise<boolean> => {
-  return await adapter.deleteUserAccount(username);
+export const deleteAccount = async (idOrUsername: string): Promise<boolean> => {
+  return await adapter.deleteUserAccount(idOrUsername);
 };
 
 export const login = async (username: string, pass: string): Promise<UserAccount | null> => {
   const accounts = await adapter.getUserAccounts();
-  const found = accounts.find((a) => a.username === username && (a as any).password === pass);
+  const found = accounts.find((a) => a.username.toLowerCase() === username.trim().toLowerCase() && (a as any).password === pass);
   if (!found) {
     throw new Error('Sai tài khoản hoặc mật khẩu');
   }
