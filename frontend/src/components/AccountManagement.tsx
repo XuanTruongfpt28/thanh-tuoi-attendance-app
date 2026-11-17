@@ -112,8 +112,8 @@ export function AccountManagement({
           ? `Đã khoá tài khoản của ${acc.name}.`
           : `Đã mở khoá tài khoản của ${acc.name}.`,
       );
-    } catch (err) {
-      showNotice('error', err instanceof Error ? err.message : 'Thao tác thất bại.');
+    } catch (err: any) {
+      showNotice('error', err?.message || 'Thao tác thất bại.');
     }
   };
 
@@ -414,8 +414,8 @@ export function AccountManagement({
               await onCreateAccount(data);
               setIsCreateOpen(false);
               showNotice('success', `Đã tạo tài khoản cho ${data.name}!`);
-            } catch (err) {
-              showNotice('error', err instanceof Error ? err.message : 'Tạo tài khoản thất bại.');
+            } catch (err: any) {
+              showNotice('error', err?.message || 'Tạo tài khoản thất bại.');
             }
           }}
         />
@@ -431,8 +431,8 @@ export function AccountManagement({
               await onUpdateAccount(editingAccount.id, updates);
               setEditingAccount(null);
               showNotice('success', `Đã cập nhật thông tin cho ${editingAccount.name}!`);
-            } catch (err) {
-              showNotice('error', err instanceof Error ? err.message : 'Cập nhật thất bại.');
+            } catch (err: any) {
+              showNotice('error', err?.message || 'Cập nhật thất bại.');
             }
           }}
         />
@@ -448,8 +448,8 @@ export function AccountManagement({
               await onResetPassword(resettingAccount.id, newPass);
               setResettingAccount(null);
               showNotice('success', `Đã đặt lại mật khẩu cho ${resettingAccount.name}!`);
-            } catch (err) {
-              showNotice('error', err instanceof Error ? err.message : 'Đặt lại mật khẩu thất bại.');
+            } catch (err: any) {
+              showNotice('error', err?.message || 'Đặt lại mật khẩu thất bại.');
             }
           }}
         />
@@ -465,8 +465,8 @@ export function AccountManagement({
               await onDeleteAccount(deletingAccount.id);
               setDeletingAccount(null);
               showNotice('success', `Đã xoá tài khoản ${deletingAccount.name}.`);
-            } catch (err) {
-              showNotice('error', err instanceof Error ? err.message : 'Xoá thất bại.');
+            } catch (err: any) {
+              showNotice('error', err?.message || 'Xoá thất bại.');
             }
           }}
         />

@@ -130,13 +130,13 @@ export class SupabaseAdapter<T = any> implements IStorageAdapter<T> {
             : `acc_${Date.now()}`);
         if (item.username !== undefined) dbObj.username = item.username;
         if (item.password !== undefined) dbObj.password = item.password;
-        if (item.role !== undefined) dbObj.role = item.role;
-        if (item.employeeId !== undefined) dbObj.employee_id = item.employeeId;
+        dbObj.role = item.role || 'employee';
+        dbObj.employee_id = item.employeeId ? item.employeeId : null;
         if (item.name !== undefined) dbObj.name = item.name;
-        if (item.branchId !== undefined) dbObj.branch_id = item.branchId;
+        dbObj.branch_id = item.branchId ? item.branchId : null;
         if (item.position !== undefined) dbObj.position = item.position;
         if (item.phone !== undefined) dbObj.phone = item.phone;
-        if (item.isActive !== undefined) dbObj.is_active = item.isActive;
+        dbObj.is_active = item.isActive ?? true;
         return dbObj;
       }
       default:
@@ -159,6 +159,7 @@ export class SupabaseAdapter<T = any> implements IStorageAdapter<T> {
     const { error } = await supabase.from(this.getTable()).upsert(dbItems);
     if (error) {
       console.error(`Lỗi ghi dữ liệu bảng ${this.getTable()}:`, error.message);
+      throw new Error(error.message);
     }
   }
 
@@ -169,7 +170,8 @@ export class SupabaseAdapter<T = any> implements IStorageAdapter<T> {
   }
 
   async setItem<U = T>(key: string, value: U): Promise<void> {
-    await supabase.from(key).upsert(value as any);
+    const { error } = await supabase.from(key).upsert(value as any);
+    if (error) throw new Error(error.message);
   }
 
   async removeItem(_key: string): Promise<void> {}
@@ -189,14 +191,31 @@ export class SupabaseAdapter<T = any> implements IStorageAdapter<T> {
   }
 
   async createUserAccount(accountData: Partial<UserAccount>): Promise<UserAccount> {
+    if (accountData.employeeId && accountData.name) {
+      try {
+        await supabase.from('employees').upsert({
+          id: accountData.employeeId,
+          name: accountData.name,
+          branch_id: accountData.branchId || 'CN_CHO_MOI',
+          position: accountData.position || null,
+        });
+      } catch (err) {
+        console.warn('Không thể đồng bộ bảng employees trước:', err);
+      }
+    }
+
     const payload = this.mapRowToDb({
       ...accountData,
+      role: accountData.role || 'employee',
       password: (accountData as any).password || '123456',
       isActive: accountData.isActive ?? true,
     });
 
     const { data, error } = await supabase.from('user_accounts').insert([payload]).select();
-    if (error) throw error;
+    if (error) {
+      console.error('Lỗi tạo tài khoản Supabase:', error);
+      throw new Error(error.message || 'Lỗi khi tạo tài khoản trên Supabase');
+    }
     return this.mapRowFromDb(data[0]);
   }
 
@@ -212,7 +231,7 @@ export class SupabaseAdapter<T = any> implements IStorageAdapter<T> {
       .eq('id', current.id)
       .select();
 
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return this.mapRowFromDb(data[0]);
   }
 
@@ -227,7 +246,7 @@ export class SupabaseAdapter<T = any> implements IStorageAdapter<T> {
       .eq('id', current.id)
       .select();
 
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return this.mapRowFromDb(data[0]);
   }
 
@@ -235,6 +254,19 @@ export class SupabaseAdapter<T = any> implements IStorageAdapter<T> {
     const accounts = await this.getUserAccounts();
     const current = accounts.find((a) => a.username === usernameOrId || a.id === usernameOrId);
     if (!current) throw new Error('Không tìm thấy tài khoản');
+
+    if (updates.employeeId && (updates.name || current.name)) {
+      try {
+        await supabase.from('employees').upsert({
+          id: updates.employeeId,
+          name: updates.name || current.name,
+          branch_id: updates.branchId || current.branchId || 'CN_CHO_MOI',
+          position: updates.position || current.position || null,
+        });
+      } catch (err) {
+        console.warn('Không thể đồng bộ bảng employees khi update:', err);
+      }
+    }
 
     const payload = this.mapRowToDb({ ...updates });
     delete payload.id;
@@ -245,7 +277,7 @@ export class SupabaseAdapter<T = any> implements IStorageAdapter<T> {
       .eq('id', current.id)
       .select();
 
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return this.mapRowFromDb(data[0]);
   }
 
@@ -255,7 +287,7 @@ export class SupabaseAdapter<T = any> implements IStorageAdapter<T> {
     if (!current) return false;
 
     const { error } = await supabase.from('user_accounts').delete().eq('id', current.id);
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return true;
   }
 }
