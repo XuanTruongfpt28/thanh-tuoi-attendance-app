@@ -170,6 +170,7 @@ class SupabaseStorageAdapter<T = any> implements IStorageAdapter<T> {
           overtimeMinutes: row.overtime_minutes ?? 0,
           note: row.note ?? undefined,
           checkInPhoto: row.check_in_photo ?? undefined,
+          checkOutPhoto: row.check_out_photo ?? undefined,
         };
       case 'employees':
         return {
@@ -191,6 +192,7 @@ class SupabaseStorageAdapter<T = any> implements IStorageAdapter<T> {
           id: row.id,
           name: row.name,
           address: row.address ?? undefined,
+          allowedIps: row.allowed_ips ?? undefined,
         };
       case 'user_accounts':
         return {
@@ -233,6 +235,7 @@ class SupabaseStorageAdapter<T = any> implements IStorageAdapter<T> {
           overtime_minutes: item.overtimeMinutes ?? 0,
           note: item.note ?? null,
           check_in_photo: item.checkInPhoto ?? null,
+          check_out_photo: item.checkOutPhoto ?? null,
         };
       case 'employees':
         return {
@@ -254,6 +257,7 @@ class SupabaseStorageAdapter<T = any> implements IStorageAdapter<T> {
           id: item.id,
           name: item.name,
           address: item.address ?? null,
+          allowed_ips: item.allowedIps ?? null,
         };
       case 'user_accounts': {
         const dbObj: any = {};
@@ -284,13 +288,56 @@ class SupabaseStorageAdapter<T = any> implements IStorageAdapter<T> {
       console.warn(`Lỗi lấy dữ liệu bảng ${this.getTable()}:`, error.message);
       return [];
     }
-    return (data || []).map((row) => this.mapRowFromDb(row)) as T[];
+
+    const fallbackRaw = localStorage.getItem(`tt_fallback_${this.getTable()}`);
+    const fallbackMap = new Map<string, any>();
+    if (fallbackRaw) {
+      try {
+        const parsed = JSON.parse(fallbackRaw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((item: any) => {
+            if (item?.id) fallbackMap.set(item.id, item);
+          });
+        }
+      } catch {}
+    }
+
+    return (data || []).map((row) => {
+      const mapped = this.mapRowFromDb(row);
+      if (fallbackMap.has(mapped.id)) {
+        const fb = fallbackMap.get(mapped.id);
+        if (!mapped.allowedIps && fb.allowedIps) {
+          mapped.allowedIps = fb.allowedIps;
+        }
+        if (!mapped.checkOutPhoto && fb.checkOutPhoto) {
+          mapped.checkOutPhoto = fb.checkOutPhoto;
+        }
+      }
+      return mapped;
+    }) as T[];
   }
 
   async saveAll(items: T[]): Promise<void> {
     if (!items || items.length === 0) return;
     const dbItems = items.map((item) => this.mapRowToDb(item));
-    const { error } = await supabase.from(this.getTable()).upsert(dbItems);
+    let { error } = await supabase.from(this.getTable()).upsert(dbItems);
+
+    // Xử lý an toàn nếu Supabase chưa có cột allowed_ips hoặc check_out_photo
+    if (error && (error.message?.includes('allowed_ips') || error.message?.includes('check_out_photo'))) {
+      const strippedItems = dbItems.map((row: any) => {
+        const copy = { ...row };
+        delete copy.allowed_ips;
+        delete copy.check_out_photo;
+        return copy;
+      });
+      const retry = await supabase.from(this.getTable()).upsert(strippedItems);
+      if (!retry.error) {
+        localStorage.setItem(`tt_fallback_${this.getTable()}`, JSON.stringify(items));
+        return;
+      }
+      error = retry.error;
+    }
+
     if (error) {
       console.error(`Lỗi ghi dữ liệu bảng ${this.getTable()}:`, error.message);
       throw new Error(error.message);

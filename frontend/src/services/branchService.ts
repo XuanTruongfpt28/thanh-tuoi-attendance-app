@@ -56,3 +56,26 @@ export async function findBranchById(id: string): Promise<Branch | undefined> {
   const branches = await getBranches();
   return branches.find((b) => b.id === id);
 }
+
+/** Cập nhật danh sách IP WiFi cho phép của một chi nhánh */
+export async function updateBranchAllowedIps(
+  branchId: string,
+  allowedIps: string[],
+): Promise<Branch> {
+  const branches = await getBranches();
+  const index = branches.findIndex((b) => b.id === branchId);
+  if (index === -1) {
+    throw new Error(`Không tìm thấy chi nhánh với mã ${branchId}`);
+  }
+
+  const updatedBranch: Branch = {
+    ...branches[index],
+    allowedIps,
+  };
+
+  const updatedList = [...branches];
+  updatedList[index] = updatedBranch;
+
+  await branchAdapter.saveAll(updatedList);
+  return updatedBranch;
+}

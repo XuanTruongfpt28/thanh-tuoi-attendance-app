@@ -15,6 +15,9 @@ export interface Branch {
   name: string;
   /** Địa chỉ (tuỳ chọn, phục vụ hiển thị chi tiết) */
   address?: string;
+  /** Danh sách IP public WiFi được phép check-in tại chi nhánh này.
+   *  Để trống = không giới hạn IP (admin chưa cấu hình). */
+  allowedIps?: string[];
 }
 
 /** Một nhân viên thuộc một chi nhánh cụ thể */
@@ -96,6 +99,8 @@ export interface AttendanceRecord {
   note?: string;
   /** Ảnh chụp khuôn mặt / tác phong lúc check-in (Base64 JPEG) */
   checkInPhoto?: string;
+  /** Ảnh chụp khuôn mặt / tác phong lúc check-out (Base64 JPEG) */
+  checkOutPhoto?: string;
 }
 
 /** Kết quả tính toán khi thực hiện Check-in, tách biệt để test độc lập */

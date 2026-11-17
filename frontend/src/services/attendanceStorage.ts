@@ -143,6 +143,7 @@ export async function checkIn(params: {
 export async function checkOut(params: {
   recordId: string;
   shift: ShiftConfig;
+  checkOutPhoto?: string;
 }): Promise<AttendanceRecord> {
   const checkOutTime = getCurrentTimeString();
   const { status, earlyLeaveMinutes, overtimeMinutes } = calculateCheckOutStatus(
@@ -161,6 +162,7 @@ export async function checkOut(params: {
       checkOutStatus: status,
       earlyLeaveMinutes,
       overtimeMinutes,
+      checkOutPhoto: params.checkOutPhoto,
     };
     return updatedRecord;
   });

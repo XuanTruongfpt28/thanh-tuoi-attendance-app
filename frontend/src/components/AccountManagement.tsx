@@ -14,9 +14,11 @@ import {
   AlertTriangle,
   CheckCircle,
   X,
+  Wifi,
 } from 'lucide-react';
 import type { UserAccount } from '../types';
 import { DEFAULT_BRANCHES, ALL_BRANCHES_FILTER } from '../constants/branches';
+import { BranchWifiModal } from './BranchWifiModal';
 
 interface AccountManagementProps {
   accounts: UserAccount[];
@@ -52,6 +54,7 @@ export function AccountManagement({
 
   // Modals
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isWifiModalOpen, setIsWifiModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<UserAccount | null>(null);
   const [resettingAccount, setResettingAccount] = useState<UserAccount | null>(null);
   const [deletingAccount, setDeletingAccount] = useState<UserAccount | null>(null);
@@ -144,14 +147,24 @@ export function AccountManagement({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsCreateOpen(true)}
-          className="flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-all hover:bg-[var(--color-primary-dark)]"
-        >
-          <UserPlus size={16} />
-          <span>+ Cấp tài khoản nhân viên mới</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsWifiModalOpen(true)}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-2.5 text-xs font-semibold text-[var(--color-ink)] shadow-2xs transition-all hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] cursor-pointer"
+          >
+            <Wifi size={15} className="text-emerald-600" />
+            <span>Cài đặt WiFi chi nhánh</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-all hover:bg-[var(--color-primary-dark)] cursor-pointer"
+          >
+            <UserPlus size={16} />
+            <span>+ Cấp tài khoản nhân viên mới</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -471,6 +484,12 @@ export function AccountManagement({
           }}
         />
       )}
+
+      {/* Modal 5: Cài đặt IP WiFi chi nhánh */}
+      <BranchWifiModal
+        isOpen={isWifiModalOpen}
+        onClose={() => setIsWifiModalOpen(false)}
+      />
     </div>
   );
 }

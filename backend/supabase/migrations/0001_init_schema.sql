@@ -8,10 +8,15 @@
 -- 1. branches — Chi nhánh
 -- --------------------------------------------------------------
 create table if not exists branches (
-  id         text primary key,
-  name       text not null,
-  address    text
+  id          text primary key,
+  name        text not null,
+  address     text,
+  allowed_ips text[]
 );
+
+-- Hỗ trợ thêm cột nếu bảng branches đã tồn tại từ trước
+alter table branches add column if not exists address text;
+alter table branches add column if not exists allowed_ips text[];
 
 -- --------------------------------------------------------------
 -- 2. employees — Nhân viên
@@ -74,8 +79,13 @@ create table if not exists attendance_records (
   early_leave_minutes   integer default 0,
   overtime_minutes      integer default 0,
   note                  text,
-  check_in_photo        text            -- Base64 JPEG (khuyến nghị: chuyển sang Supabase Storage sau này)
+  check_in_photo        text,           -- Base64 JPEG (khuyến nghị: chuyển sang Supabase Storage sau này)
+  check_out_photo       text            -- Base64 JPEG ảnh khi check-out
 );
+
+-- Hỗ trợ thêm cột nếu bảng attendance_records đã tồn tại từ trước
+alter table attendance_records add column if not exists check_in_photo text;
+alter table attendance_records add column if not exists check_out_photo text;
 
 create index if not exists idx_attendance_date_branch
   on attendance_records (date, branch_id);

@@ -10,6 +10,8 @@ import {
   MessageSquarePlus,
   PlusCircle,
   ArrowLeft,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import type { AttendanceRecord, Branch, ShiftConfig, UserAccount } from '../types';
 import { DEFAULT_BRANCHES } from '../constants/branches';
@@ -22,7 +24,9 @@ import {
   updateRecordNote,
 } from '../services/attendanceStorage';
 import { getCurrentDateString, suggestNearestShift } from '../utils/timeUtils';
+import { isIpAllowed, clearIpCache } from '../services/ipService';
 import { StatusBadge } from './StatusBadge';
+import { CameraCaptureModal } from './CameraCaptureModal';
 
 interface EmployeePortalProps {
   user: UserAccount;
@@ -55,6 +59,14 @@ export function EmployeePortal({ user, shifts }: EmployeePortalProps) {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null,
   );
+  // Camera & IP states
+  const [showCameraForCheckIn, setShowCameraForCheckIn] = useState(false);
+  const [showCameraForCheckOut, setShowCameraForCheckOut] = useState(false);
+  const [ipStatus, setIpStatus] = useState<{ checked: boolean; allowed: boolean; currentIp: string }>({
+    checked: false,
+    allowed: false,
+    currentIp: '',
+  });
 
   // Nạp danh sách chi nhánh
   const loadBranches = useCallback(async () => {
@@ -65,6 +77,25 @@ export function EmployeePortal({ user, shifts }: EmployeePortalProps) {
   useEffect(() => {
     loadBranches();
   }, [loadBranches]);
+
+  // Kiểm tra IP khi chi nhánh thay đổi
+  const checkIpForBranch = useCallback(async (branchId: string, branchList: Branch[]) => {
+    const branch = branchList.find((b) => b.id === branchId);
+    try {
+      clearIpCache(); // Luôn check IP mới nhất
+      const result = await isIpAllowed(branch?.allowedIps);
+      setIpStatus({ checked: true, allowed: result.allowed, currentIp: result.currentIp });
+    } catch {
+      // Không lấy được IP → chặn luôn (an toàn)
+      setIpStatus({ checked: true, allowed: false, currentIp: 'không xác định' });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (branches.length > 0 && selectedBranchId) {
+      checkIpForBranch(selectedBranchId, branches);
+    }
+  }, [selectedBranchId, branches, checkIpForBranch]);
 
   // Map tên chi nhánh
   const branchMap = useMemo(() => {
@@ -131,6 +162,24 @@ export function EmployeePortal({ user, shifts }: EmployeePortalProps) {
       return;
     }
 
+    // Kiểm tra IP WiFi trước
+    if (!ipStatus.allowed) {
+      setFeedback({
+        type: 'error',
+        message: `Bạn không thể check-in từ mạng hiện tại (IP: ${ipStatus.currentIp}). Vui lòng kết nối WiFi nội bộ chi nhánh.`,
+      });
+      return;
+    }
+
+    // Mở camera - bắt buộc chụp ảnh trước khi check-in
+    setShowCameraForCheckIn(true);
+  };
+
+  // Thực hiện check-in sau khi đã chụp ảnh
+  const executeCheckIn = async (photoBase64: string) => {
+    const shift = shifts.find((s) => s.id === selectedShiftId);
+    if (!shift || !user.employeeId) return;
+
     let finalBranchId = selectedBranchId;
     if (isCustomBranch) {
       if (!customBranchName.trim()) {
@@ -161,6 +210,7 @@ export function EmployeePortal({ user, shifts }: EmployeePortalProps) {
         employeeName: user.name,
         branchId: finalBranchId || user.branchId || DEFAULT_BRANCHES[0].id,
         shift,
+        checkInPhoto: photoBase64,
       });
       if (noteText.trim()) {
         await updateRecordNote(record.id, noteText.trim());
@@ -184,12 +234,32 @@ export function EmployeePortal({ user, shifts }: EmployeePortalProps) {
       return;
     }
 
+    // Kiểm tra IP WiFi trước
+    if (!ipStatus.allowed) {
+      setFeedback({
+        type: 'error',
+        message: `Bạn không thể check-out từ mạng hiện tại (IP: ${ipStatus.currentIp}). Vui lòng kết nối WiFi nội bộ chi nhánh.`,
+      });
+      return;
+    }
+
+    // Mở camera - bắt buộc chụp ảnh trước khi check-out
+    setShowCameraForCheckOut(true);
+  };
+
+  // Thực hiện check-out sau khi đã chụp ảnh
+  const executeCheckOut = async (photoBase64: string) => {
+    if (!todayRecord) return;
+    const shift = shifts.find((s) => s.id === todayRecord.shiftId);
+    if (!shift) return;
+
     setIsSubmitting(true);
     setFeedback(null);
     try {
       await checkOut({
         recordId: todayRecord.id,
         shift,
+        checkOutPhoto: photoBase64,
       });
       if (noteText.trim()) {
         await updateRecordNote(todayRecord.id, noteText.trim());
@@ -250,6 +320,29 @@ export function EmployeePortal({ user, shifts }: EmployeePortalProps) {
               <AlertCircle size={16} className="shrink-0" />
             )}
             <span>{feedback.message}</span>
+          </div>
+        )}
+
+        {/* Trạng thái WiFi / IP */}
+        {ipStatus.checked && (
+          <div
+            className={`mt-3 flex items-center gap-2 rounded-2xl p-3 text-xs font-medium ${
+              ipStatus.allowed
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-red-50 text-red-700 border border-red-200'
+            }`}
+          >
+            {ipStatus.allowed ? (
+              <>
+                <Wifi size={15} className="shrink-0" />
+                <span>✅ WiFi chi nhánh hợp lệ ({ipStatus.currentIp})</span>
+              </>
+            ) : (
+              <>
+                <WifiOff size={15} className="shrink-0" />
+                <span>🚫 Mạng không hợp lệ (IP: {ipStatus.currentIp}). Chỉ được check-in/out khi kết nối WiFi nội bộ chi nhánh.</span>
+              </>
+            )}
           </div>
         )}
 
@@ -375,12 +468,12 @@ export function EmployeePortal({ user, shifts }: EmployeePortalProps) {
               {/* NÚT CHECK-IN LỚN DUY NHẤT */}
               <button
                 type="button"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !ipStatus.allowed}
                 onClick={handleCheckIn}
                 className="mt-2 flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[var(--color-primary)] py-4 text-base font-bold text-white shadow-lg shadow-[var(--color-primary)]/25 transition-all hover:bg-[var(--color-primary-dark)] active:scale-[0.98] disabled:opacity-50 cursor-pointer"
               >
                 <LogIn size={22} />
-                <span>{isSubmitting ? 'Đang ghi nhận...' : 'CHECK-IN (VÀO CA)'}</span>
+                <span>{isSubmitting ? 'Đang ghi nhận...' : !ipStatus.allowed ? '🔒 WiFi không hợp lệ' : 'CHECK-IN (VÀO CA)'}</span>
               </button>
             </div>
           )}
@@ -426,12 +519,12 @@ export function EmployeePortal({ user, shifts }: EmployeePortalProps) {
               {/* NÚT CHECK-OUT LỚN DUY NHẤT */}
               <button
                 type="button"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !ipStatus.allowed}
                 onClick={handleCheckOut}
                 className="mt-2 flex w-full items-center justify-center gap-2.5 rounded-2xl border-2 border-[var(--color-primary)] bg-white py-4 text-base font-bold text-[var(--color-primary-dark)] shadow-sm transition-all hover:bg-[var(--color-primary)] hover:text-white active:scale-[0.98] disabled:opacity-50 cursor-pointer"
               >
                 <LogOut size={22} />
-                <span>{isSubmitting ? 'Đang xử lý...' : 'CHECK-OUT (TAN CA)'}</span>
+                <span>{isSubmitting ? 'Đang xử lý...' : !ipStatus.allowed ? '🔒 WiFi không hợp lệ' : 'CHECK-OUT (TAN CA)'}</span>
               </button>
             </div>
           )}
@@ -567,6 +660,30 @@ export function EmployeePortal({ user, shifts }: EmployeePortalProps) {
           </div>
         </div>
       )}
+
+      {/* MODAL CHỤP ẢNH BẮT BUỘC CHECK-IN */}
+      <CameraCaptureModal
+        isOpen={showCameraForCheckIn}
+        mode="check_in"
+        onClose={() => setShowCameraForCheckIn(false)}
+        onCapture={(photo) => {
+          setShowCameraForCheckIn(false);
+          executeCheckIn(photo);
+        }}
+        employeeName={user.name}
+      />
+
+      {/* MODAL CHỤP ẢNH BẮT BUỘC CHECK-OUT */}
+      <CameraCaptureModal
+        isOpen={showCameraForCheckOut}
+        mode="check_out"
+        onClose={() => setShowCameraForCheckOut(false)}
+        onCapture={(photo) => {
+          setShowCameraForCheckOut(false);
+          executeCheckOut(photo);
+        }}
+        employeeName={user.name}
+      />
     </div>
   );
 }

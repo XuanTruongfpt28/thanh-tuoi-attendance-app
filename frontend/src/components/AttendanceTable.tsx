@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Camera, X } from 'lucide-react';
 import type { AttendanceRecord, ShiftConfig } from '../types';
 import { DEFAULT_BRANCHES } from '../constants/branches';
 import { formatMinutesToReadable } from '../utils/timeUtils';
@@ -34,6 +34,7 @@ export function AttendanceTable({
   onNoteChange,
 }: AttendanceTableProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>('all');
+  const [previewPhoto, setPreviewPhoto] = useState<{ url: string; title: string } | null>(null);
   const shiftNameById = useMemo(() => new Map(shifts.map((s) => [s.id, s.name])), [shifts]);
 
   const visibleRecords = useMemo(() => {
@@ -106,14 +107,50 @@ export function AttendanceTable({
                   {shiftNameById.get(record.shiftId) ?? record.shiftId}
                 </td>
                 <td className="px-4 py-3">
-                  <p className="text-[var(--color-ink)]">{record.checkInTime ?? '—'}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[var(--color-ink)]">{record.checkInTime ?? '—'}</p>
+                    {record.checkInPhoto && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreviewPhoto({
+                            url: record.checkInPhoto!,
+                            title: `Ảnh Check-in: ${record.employeeName} (${record.checkInTime})`,
+                          })
+                        }
+                        className="inline-flex items-center gap-0.5 rounded-md bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 hover:bg-emerald-100 cursor-pointer"
+                        title="Bấm xem ảnh check-in"
+                      >
+                        <Camera size={11} />
+                        <span>Ảnh</span>
+                      </button>
+                    )}
+                  </div>
                   {record.checkInStatus === 'late' && (
                     <StatusBadge tone="amber">Trễ {formatMinutesToReadable(record.lateMinutes ?? 0)}</StatusBadge>
                   )}
                   {record.checkInStatus === 'on_time' && <StatusBadge tone="primary">Đúng giờ</StatusBadge>}
                 </td>
                 <td className="px-4 py-3">
-                  <p className="text-[var(--color-ink)]">{record.checkOutTime ?? '—'}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[var(--color-ink)]">{record.checkOutTime ?? '—'}</p>
+                    {record.checkOutPhoto && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreviewPhoto({
+                            url: record.checkOutPhoto!,
+                            title: `Ảnh Check-out: ${record.employeeName} (${record.checkOutTime})`,
+                          })
+                        }
+                        className="inline-flex items-center gap-0.5 rounded-md bg-blue-50 border border-blue-200 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 hover:bg-blue-100 cursor-pointer"
+                        title="Bấm xem ảnh check-out"
+                      >
+                        <Camera size={11} />
+                        <span>Ảnh</span>
+                      </button>
+                    )}
+                  </div>
                   {record.checkOutStatus === 'early_leave' && (
                     <StatusBadge tone="red">
                       Về sớm {formatMinutesToReadable(record.earlyLeaveMinutes ?? 0)}
@@ -144,6 +181,50 @@ export function AttendanceTable({
           </tbody>
         </table>
       </div>
+
+      {/* MODAL XEM ẢNH ĐIỂM DANH */}
+      {previewPhoto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
+              <h3 className="font-display text-sm font-bold text-[var(--color-ink)]">
+                {previewPhoto.title}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="rounded-lg p-1.5 text-[var(--color-ink-soft)] hover:bg-[var(--color-bg)] cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-black">
+              <img
+                src={previewPhoto.url}
+                alt="Ảnh điểm danh"
+                className="h-80 w-full object-cover"
+              />
+            </div>
+
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="rounded-xl bg-zinc-800 px-5 py-2 text-xs font-semibold text-white hover:bg-black cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

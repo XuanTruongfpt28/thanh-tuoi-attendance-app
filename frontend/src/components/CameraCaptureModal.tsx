@@ -6,6 +6,7 @@ interface CameraCaptureModalProps {
   onClose: () => void;
   onCapture: (photoBase64: string) => void;
   employeeName: string;
+  mode?: 'check_in' | 'check_out';
 }
 
 export function CameraCaptureModal({
@@ -13,6 +14,7 @@ export function CameraCaptureModal({
   onClose,
   onCapture,
   employeeName,
+  mode = 'check_in',
 }: CameraCaptureModalProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -155,7 +157,7 @@ export function CameraCaptureModal({
           <div>
             <h3 className="font-display text-base font-bold text-[var(--color-ink)] flex items-center gap-2">
               <Camera size={18} className="text-[var(--color-primary)]" />
-              Chụp ảnh tác phong vào ca
+              {mode === 'check_out' ? 'Chụp ảnh xác nhận tan ca' : 'Chụp ảnh tác phong vào ca'}
             </h3>
             <p className="text-xs text-[var(--color-ink-soft)]">
               Nhân viên: <strong className="text-[var(--color-ink)]">{employeeName}</strong>
@@ -273,7 +275,7 @@ export function CameraCaptureModal({
                 className="flex items-center justify-center gap-1.5 rounded-2xl bg-[var(--color-primary)] py-3 text-xs font-bold text-white shadow-md shadow-[var(--color-primary)]/20 hover:bg-[var(--color-primary-dark)] cursor-pointer"
               >
                 <CheckCircle2 size={16} />
-                <span>Xác nhận & Vào ca</span>
+                <span>{mode === 'check_out' ? 'Xác nhận & Tan ca' : 'Xác nhận & Vào ca'}</span>
               </button>
             </div>
           )}
