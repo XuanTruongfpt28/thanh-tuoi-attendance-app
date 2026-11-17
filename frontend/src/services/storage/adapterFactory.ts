@@ -1,5 +1,6 @@
 import type { IStorageAdapter } from './StorageAdapter';
 import type { UserAccount } from '../../types';
+import { DEFAULT_BRANCHES } from '../../constants/branches';
 import { supabase } from '../supabaseClient';
 
 class LocalStorageAdapter<T = any> implements IStorageAdapter<T> {
@@ -323,7 +324,21 @@ class SupabaseStorageAdapter<T = any> implements IStorageAdapter<T> {
   }
 
   async createUserAccount(accountData: Partial<UserAccount>): Promise<UserAccount> {
-    // Nếu có mã nhân viên, tự động đồng bộ vào bảng employees trước để tránh lỗi foreign key
+    // 1. Tự động đồng bộ chi nhánh nếu chưa tồn tại trong bảng branches
+    if (accountData.branchId) {
+      try {
+        const foundBranch = DEFAULT_BRANCHES.find((b) => b.id === accountData.branchId);
+        await supabase.from('branches').upsert({
+          id: accountData.branchId,
+          name: foundBranch?.name || accountData.branchId,
+          address: foundBranch?.address || null,
+        });
+      } catch (bErr) {
+        console.warn('Không thể đồng bộ bảng branches trước:', bErr);
+      }
+    }
+
+    // 2. Nếu có mã nhân viên, tự động đồng bộ vào bảng employees trước để tránh lỗi foreign key
     if (accountData.employeeId && accountData.name) {
       try {
         await supabase.from('employees').upsert({
@@ -385,6 +400,20 @@ class SupabaseStorageAdapter<T = any> implements IStorageAdapter<T> {
     const accounts = await this.getUserAccounts();
     const current = accounts.find((a) => a.username === usernameOrId || a.id === usernameOrId);
     if (!current) throw new Error('Không tìm thấy tài khoản');
+
+    // Đồng bộ chi nhánh nếu có thay đổi
+    if (updates.branchId) {
+      try {
+        const foundBranch = DEFAULT_BRANCHES.find((b) => b.id === updates.branchId);
+        await supabase.from('branches').upsert({
+          id: updates.branchId,
+          name: foundBranch?.name || updates.branchId,
+          address: foundBranch?.address || null,
+        });
+      } catch (bErr) {
+        console.warn('Không thể đồng bộ bảng branches khi update:', bErr);
+      }
+    }
 
     // Đồng bộ sang bảng employees nếu có mã nhân viên
     if (updates.employeeId && (updates.name || current.name)) {

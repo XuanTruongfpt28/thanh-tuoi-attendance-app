@@ -13,6 +13,7 @@ import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { useShifts } from './hooks/useShifts';
 import { useAttendance } from './hooks/useAttendance';
 import { useAuth } from './hooks/useAuth';
+import { getBranches } from './services/branchService';
 import { Zap } from 'lucide-react';
 
 /**
@@ -61,6 +62,11 @@ export default function App() {
     doCheckOut,
     setNote,
   } = useAttendance(shifts);
+
+  // Tự động đảm bảo danh sách chi nhánh mặc định có trong database
+  useEffect(() => {
+    getBranches();
+  }, []);
 
   // Tự động chuyển tab phù hợp khi đăng nhập với vai trò khác nhau
   useEffect(() => {
