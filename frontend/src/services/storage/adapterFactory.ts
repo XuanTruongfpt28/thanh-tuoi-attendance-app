@@ -324,31 +324,31 @@ class SupabaseStorageAdapter<T = any> implements IStorageAdapter<T> {
   }
 
   async createUserAccount(accountData: Partial<UserAccount>): Promise<UserAccount> {
-    // 1. Tự động đồng bộ chi nhánh nếu chưa tồn tại trong bảng branches
+    // 1. Tự động đồng bộ chi nhánh vào bảng branches (check error từ Supabase đúng cách)
     if (accountData.branchId) {
-      try {
-        const foundBranch = DEFAULT_BRANCHES.find((b) => b.id === accountData.branchId);
-        await supabase.from('branches').upsert({
-          id: accountData.branchId,
-          name: foundBranch?.name || accountData.branchId,
-          address: foundBranch?.address || null,
-        });
-      } catch (bErr) {
-        console.warn('Không thể đồng bộ bảng branches trước:', bErr);
+      const foundBranch = DEFAULT_BRANCHES.find((b) => b.id === accountData.branchId);
+      const { error: bErr } = await supabase.from('branches').upsert({
+        id: accountData.branchId,
+        name: foundBranch?.name || accountData.branchId,
+        address: foundBranch?.address || null,
+      });
+      if (bErr) {
+        console.error('Lỗi đồng bộ branches:', bErr.message);
+        throw new Error(`Lỗi đồng bộ chi nhánh: ${bErr.message}`);
       }
     }
 
-    // 2. Nếu có mã nhân viên, tự động đồng bộ vào bảng employees trước để tránh lỗi foreign key
+    // 2. Nếu có mã nhân viên, đồng bộ vào bảng employees trước để tránh lỗi foreign key
     if (accountData.employeeId && accountData.name) {
-      try {
-        await supabase.from('employees').upsert({
-          id: accountData.employeeId,
-          name: accountData.name,
-          branch_id: accountData.branchId || 'CN_CHO_MOI',
-          position: accountData.position || null,
-        });
-      } catch (err) {
-        console.warn('Không thể đồng bộ bảng employees trước:', err);
+      const { error: eErr } = await supabase.from('employees').upsert({
+        id: accountData.employeeId,
+        name: accountData.name,
+        branch_id: accountData.branchId || 'CN_CHO_MOI',
+        position: accountData.position || null,
+      });
+      if (eErr) {
+        console.error('Lỗi đồng bộ employees:', eErr.message);
+        throw new Error(`Lỗi đồng bộ nhân viên: ${eErr.message}`);
       }
     }
 

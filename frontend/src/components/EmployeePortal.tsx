@@ -121,7 +121,10 @@ export function EmployeePortal({ user, shifts }: EmployeePortalProps) {
 
   // Xử lý Check-in
   const handleCheckIn = async () => {
-    if (!user.employeeId) return;
+    if (!user.employeeId) {
+      setFeedback({ type: 'error', message: 'Tài khoản chưa có mã nhân viên. Vui lòng liên hệ quản trị viên để cập nhật.' });
+      return;
+    }
     const shift = shifts.find((s) => s.id === selectedShiftId);
     if (!shift) {
       setFeedback({ type: 'error', message: 'Vui lòng chọn ca làm việc.' });

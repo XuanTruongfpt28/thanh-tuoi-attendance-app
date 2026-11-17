@@ -9,12 +9,54 @@
 import type { AttendanceRecord, ShiftConfig } from '../types';
 import { STORAGE_KEYS, type IStorageAdapter } from './storage/StorageAdapter';
 import { createAdapter } from './storage/adapterFactory';
+import { supabase } from './supabaseClient';
+import { DEFAULT_BRANCHES } from '../constants/branches';
 import {
   calculateCheckInStatus,
   calculateCheckOutStatus,
   getCurrentDateString,
   getCurrentTimeString,
 } from '../utils/timeUtils';
+
+const storageMode = import.meta.env.VITE_STORAGE_MODE || 'local';
+
+/** Đồng bộ branch, employee, shift_config lên Supabase trước khi check-in để tránh FK error */
+async function ensureSupabaseRefsExist(params: {
+  employeeId: string;
+  employeeName: string;
+  branchId: string;
+  shift: ShiftConfig;
+}): Promise<void> {
+  if (storageMode !== 'supabase') return;
+
+  // 1. Upsert branch
+  const foundBranch = DEFAULT_BRANCHES.find((b) => b.id === params.branchId);
+  const { error: bErr } = await supabase.from('branches').upsert({
+    id: params.branchId,
+    name: foundBranch?.name || params.branchId,
+    address: foundBranch?.address || null,
+  });
+  if (bErr) console.warn('Không thể đồng bộ branches trước check-in:', bErr.message);
+
+  // 2. Upsert employee
+  const { error: eErr } = await supabase.from('employees').upsert({
+    id: params.employeeId,
+    name: params.employeeName,
+    branch_id: params.branchId,
+    position: null,
+  });
+  if (eErr) console.warn('Không thể đồng bộ employees trước check-in:', eErr.message);
+
+  // 3. Upsert shift_config
+  const { error: sErr } = await supabase.from('shift_configs').upsert({
+    id: params.shift.id,
+    name: params.shift.name,
+    start_time: params.shift.startTime,
+    end_time: params.shift.endTime,
+    grace_period_minutes: params.shift.gracePeriodMinutes ?? 0,
+  });
+  if (sErr) console.warn('Không thể đồng bộ shift_configs trước check-in:', sErr.message);
+}
 
 const adapter: IStorageAdapter<AttendanceRecord> = createAdapter<AttendanceRecord>(
   STORAGE_KEYS.ATTENDANCE_RECORDS,
@@ -64,6 +106,14 @@ export async function checkIn(params: {
   shift: ShiftConfig;
   checkInPhoto?: string;
 }): Promise<AttendanceRecord> {
+  // Đồng bộ branch, employee, shift lên Supabase trước để tránh FK constraint error
+  await ensureSupabaseRefsExist({
+    employeeId: params.employeeId,
+    employeeName: params.employeeName,
+    branchId: params.branchId,
+    shift: params.shift,
+  });
+
   const date = getCurrentDateString();
   const checkInTime = getCurrentTimeString();
   const { status, lateMinutes } = calculateCheckInStatus(params.shift, checkInTime);
