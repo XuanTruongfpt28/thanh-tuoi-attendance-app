@@ -8,18 +8,32 @@
 import type { Employee } from '../types';
 import { STORAGE_KEYS, type IStorageAdapter } from './storage/StorageAdapter';
 import { createAdapter } from './storage/adapterFactory';
-import { DEFAULT_EMPLOYEES } from '../constants/employees';
+import { DEMO_EMPLOYEE_IDS } from '../constants/employees';
+import { getAllAccounts } from './authService';
 
 const adapter: IStorageAdapter<Employee> = createAdapter<Employee>(STORAGE_KEYS.EMPLOYEES, 'employees');
 
-/** Lấy toàn bộ nhân viên. Nếu chưa có dữ liệu, khởi tạo bằng DEFAULT_EMPLOYEES. */
+/** Lấy toàn bộ nhân viên thực tế (loại bỏ dữ liệu mẫu demo). */
 export async function getEmployees(): Promise<Employee[]> {
-  const employees = await adapter.getAll();
-  if (employees.length === 0) {
-    await adapter.saveAll(DEFAULT_EMPLOYEES);
-    return DEFAULT_EMPLOYEES;
+  try {
+    const accounts = await getAllAccounts();
+    const employeeAccounts = accounts.filter((a) => a.role === 'employee' && a.isActive);
+    if (employeeAccounts.length > 0) {
+      return employeeAccounts.map((a) => ({
+        id: a.employeeId || a.username || a.id,
+        name: a.name || a.username,
+        branchId: a.branchId || 'CN_CHO_MOI',
+        position: a.position || 'Nhân viên',
+      }));
+    }
+  } catch (err) {
+    console.warn('Không thể nạp danh sách nhân viên từ user_accounts:', err);
   }
-  return employees;
+
+  const employees = await adapter.getAll();
+  // Loại bỏ các tài khoản nhân viên demo NV001 -> NV008
+  const realEmployees = employees.filter((e) => !DEMO_EMPLOYEE_IDS.has(e.id));
+  return realEmployees;
 }
 
 /** Lấy danh sách nhân viên thuộc một chi nhánh cụ thể. */
@@ -52,5 +66,19 @@ export async function removeEmployee(employeeId: string): Promise<void> {
   const employees = await getEmployees();
   const filtered = employees.filter((e) => e.id !== employeeId);
   await adapter.saveAll(filtered);
+}
+
+/** Dọn dẹp các bản ghi nhân viên mẫu demo cũ còn tồn đọng trong database */
+export async function cleanUpDemoEmployees(): Promise<void> {
+  try {
+    const all = await adapter.getAll();
+    const hasDemo = all.some((e) => DEMO_EMPLOYEE_IDS.has(e.id));
+    if (hasDemo) {
+      const cleaned = all.filter((e) => !DEMO_EMPLOYEE_IDS.has(e.id));
+      await adapter.saveAll(cleaned);
+    }
+  } catch (err) {
+    console.warn('Không thể dọn dẹp nhân viên demo:', err);
+  }
 }
 

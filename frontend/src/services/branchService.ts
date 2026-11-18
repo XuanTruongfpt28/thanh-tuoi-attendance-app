@@ -15,13 +15,23 @@ const branchAdapter: IStorageAdapter<Branch> = createAdapter<Branch>(
   'branches',
 );
 
-/** Lấy toàn bộ chi nhánh. Tự động seed nếu chưa có dữ liệu. */
+/** Lấy toàn bộ chi nhánh. Tự động seed và bổ sung chi nhánh mới nếu chưa có. */
 export async function getBranches(): Promise<Branch[]> {
   const branches = await branchAdapter.getAll();
   if (branches.length === 0) {
     await branchAdapter.saveAll(DEFAULT_BRANCHES);
     return DEFAULT_BRANCHES;
   }
+
+  // Đảm bảo chi nhánh mới (như Lấp Vò 5) được tự động bổ sung vào database
+  const existingIds = new Set(branches.map((b) => b.id));
+  const missingDefaults = DEFAULT_BRANCHES.filter((d) => !existingIds.has(d.id));
+  if (missingDefaults.length > 0) {
+    const merged = [...branches, ...missingDefaults];
+    await branchAdapter.saveAll(merged);
+    return merged;
+  }
+
   return branches;
 }
 

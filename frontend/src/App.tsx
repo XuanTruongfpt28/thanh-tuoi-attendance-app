@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Header, type AppTab } from './components/Header';
 import { BranchDateFilter } from './components/BranchDateFilter';
 import { StatsCard } from './components/StatsCard';
-import { CheckInForm } from './components/CheckInForm';
 import { AttendanceTable } from './components/AttendanceTable';
 import { ShiftConfigModal } from './components/ShiftConfigModal';
 import { ExportPanel } from './components/ExportPanel';
@@ -14,6 +13,7 @@ import { useShifts } from './hooks/useShifts';
 import { useAttendance } from './hooks/useAttendance';
 import { useAuth } from './hooks/useAuth';
 import { getBranches } from './services/branchService';
+import { cleanUpDemoEmployees } from './services/employeeService';
 import { Zap } from 'lucide-react';
 
 /**
@@ -54,18 +54,16 @@ export default function App() {
     setSelectedDate,
     searchTerm,
     setSearchTerm,
-    employees,
     employeesInScope,
     records,
     stats,
-    doCheckIn,
-    doCheckOut,
     setNote,
-  } = useAttendance(shifts);
+  } = useAttendance(shifts, accounts);
 
-  // Tự động đảm bảo danh sách chi nhánh mặc định có trong database
+  // Tự động đảm bảo danh sách chi nhánh và dọn dẹp nhân viên demo cũ
   useEffect(() => {
     getBranches();
+    cleanUpDemoEmployees();
   }, []);
 
   // Tự động chuyển tab phù hợp khi đăng nhập với vai trò khác nhau
@@ -169,18 +167,6 @@ export default function App() {
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
               onNoteChange={setNote}
-            />
-          </section>
-        )}
-
-        {/* Phân hệ 4: Kiosk điểm danh quầy chung (Dành cho quầy tablet) */}
-        {activeTab === 'kiosk' && (
-          <section className="py-4">
-            <CheckInForm
-              employees={employees}
-              shifts={shifts}
-              onCheckIn={doCheckIn}
-              onCheckOut={doCheckOut}
             />
           </section>
         )}

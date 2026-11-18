@@ -1,8 +1,8 @@
-import { Zap, LayoutGrid, Users, ScanLine, LogOut, KeyRound, Shield, UserCheck } from 'lucide-react';
+import { Zap, LayoutGrid, Users, LogOut, KeyRound, Shield, UserCheck } from 'lucide-react';
 import type { UserAccount } from '../types';
 import { DEFAULT_BRANCHES } from '../constants/branches';
 
-export type AppTab = 'admin-attendance' | 'admin-accounts' | 'kiosk' | 'employee-checkin';
+export type AppTab = 'admin-attendance' | 'admin-accounts' | 'employee-checkin';
 
 interface HeaderProps {
   activeTab: AppTab;
@@ -75,12 +75,6 @@ export function Header({
               icon={<Users size={15} />}
               isActive={activeTab === 'admin-accounts'}
               onClick={() => onTabChange('admin-accounts')}
-            />
-            <TabButton
-              label="Kiosk quầy"
-              icon={<ScanLine size={15} />}
-              isActive={activeTab === 'kiosk'}
-              onClick={() => onTabChange('kiosk')}
             />
           </nav>
         )}

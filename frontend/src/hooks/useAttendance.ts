@@ -9,7 +9,7 @@
  * dữ liệu/hàm từ hook này, không tự viết logic nghiệp vụ.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { AttendanceRecord, AttendanceStats, Employee, ShiftConfig } from '../types';
+import type { AttendanceRecord, AttendanceStats, Employee, ShiftConfig, UserAccount } from '../types';
 import { ALL_BRANCHES_FILTER } from '../constants/branches';
 import { getEmployees } from '../services/employeeService';
 import {
@@ -21,7 +21,7 @@ import {
 } from '../services/attendanceStorage';
 import { getCurrentDateString } from '../utils/timeUtils';
 
-export function useAttendance(shifts: ShiftConfig[]) {
+export function useAttendance(shifts: ShiftConfig[], accounts?: UserAccount[]) {
   const [branchFilter, setBranchFilter] = useState<string>(ALL_BRANCHES_FILTER);
   const [selectedDate, setSelectedDate] = useState<string>(getCurrentDateString());
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,10 +36,22 @@ export function useAttendance(shifts: ShiftConfig[]) {
     setIsLoading(false);
   }, [selectedDate, branchFilter]);
 
-  // Nạp danh sách nhân viên một lần khi khởi tạo.
+  // Đồng bộ danh sách nhân viên từ danh sách tài khoản thực tế
   useEffect(() => {
-    getEmployees().then(setEmployees);
-  }, []);
+    if (accounts && accounts.length > 0) {
+      const activeEmployees: Employee[] = accounts
+        .filter((a) => a.role === 'employee' && a.isActive)
+        .map((a) => ({
+          id: a.employeeId || a.username || a.id,
+          name: a.name || a.username,
+          branchId: a.branchId || 'CN_CHO_MOI',
+          position: a.position || 'Nhân viên',
+        }));
+      setEmployees(activeEmployees);
+    } else {
+      getEmployees().then(setEmployees);
+    }
+  }, [accounts]);
 
   // Nạp lại bản ghi chấm công mỗi khi đổi ngày hoặc chi nhánh.
   useEffect(() => {
@@ -68,8 +80,17 @@ export function useAttendance(shifts: ShiftConfig[]) {
     const totalEmployees = employeesInScope.length;
     const present = records.filter((r) => r.checkInTime && !r.checkOutTime).length;
     const late = records.filter((r) => r.checkInStatus === 'late').length;
-    const employeeIdsWithRecord = new Set(records.map((r) => r.employeeId));
-    const absent = employeesInScope.filter((e) => !employeeIdsWithRecord.has(e.id)).length;
+    const checkedInEmployeeKeys = new Set(
+      records.map((r) => (r.employeeId || '').toLowerCase().trim()),
+    );
+    const absent = employeesInScope.filter((e) => {
+      const empId = (e.id || '').toLowerCase().trim();
+      const empName = (e.name || '').toLowerCase().trim();
+      const hasCheckedIn =
+        checkedInEmployeeKeys.has(empId) ||
+        records.some((r) => (r.employeeName || '').toLowerCase().trim() === empName);
+      return !hasCheckedIn;
+    }).length;
     return { totalEmployees, present, late, absent };
   }, [employeesInScope, records]);
 

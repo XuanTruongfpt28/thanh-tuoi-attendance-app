@@ -3,10 +3,11 @@
 --  Chạy script này trên Supabase SQL Editor sau khi đã chạy 0001_init_schema.sql.
 -- ============================================================
 
--- 1. Danh sách 4 Chi nhánh Xe Điện Thanh Tươi
+-- 1. Danh sách 5 Chi nhánh Xe Điện Thanh Tươi
 insert into branches (id, name, address) values
   ('CN_CHO_MOI', 'Cửa hàng Chợ Mới', 'Thị trấn Chợ Mới, Huyện Chợ Mới, An Giang'),
   ('CN_LAP_VO', 'Cửa hàng Lấp Vò', 'Thị trấn Lấp Vò, Huyện Lấp Vò, Đồng Tháp'),
+  ('CN_LAP_VO_5', 'Cửa hàng Lấp Vò 5', 'Thị trấn Lấp Vò, Huyện Lấp Vò, Đồng Tháp'),
   ('CN_MY_LUONG_3', 'Cửa hàng Mỹ Luông 3', 'Thị trấn Mỹ Luông, Huyện Chợ Mới, An Giang'),
   ('CN_MY_LUONG_4', 'Cửa hàng Mỹ Luông 4', 'Thị trấn Mỹ Luông, Huyện Chợ Mới, An Giang')
 on conflict (id) do update set

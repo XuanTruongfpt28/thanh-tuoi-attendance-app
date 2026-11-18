@@ -203,8 +203,8 @@ export function AccountManagement({
             <span className="text-xs font-semibold uppercase tracking-wider">Chi nhánh</span>
             <Building2 size={16} className="text-[var(--color-blue)]" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-[var(--color-ink)]">4</div>
-          <div className="text-[11px] text-[var(--color-ink-soft)] mt-0.5">Chợ Mới, Lấp Vò, ML 3&4</div>
+          <div className="mt-2 text-2xl font-bold text-[var(--color-ink)]">{DEFAULT_BRANCHES.length}</div>
+          <div className="text-[11px] text-[var(--color-ink-soft)] mt-0.5">Chợ Mới, Lấp Vò, LV 5, ML 3&4</div>
         </div>
       </div>
 
