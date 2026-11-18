@@ -47,6 +47,17 @@ class LocalStorageAdapter<T = any> implements IStorageAdapter<T> {
   }
 
   async removeItem(key: string): Promise<void> {
+    const raw = localStorage.getItem(this.storageKey);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter((item: any) => item.id !== key);
+          localStorage.setItem(this.storageKey, JSON.stringify(filtered));
+          return;
+        }
+      } catch {}
+    }
     localStorage.removeItem(key);
   }
 
@@ -355,7 +366,29 @@ class SupabaseStorageAdapter<T = any> implements IStorageAdapter<T> {
     if (error) throw new Error(error.message);
   }
 
-  async removeItem(_key: string): Promise<void> {}
+  async removeItem(id: string): Promise<void> {
+    const { error } = await supabase.from(this.getTable()).delete().eq('id', id);
+    if (error) {
+      console.error(`Lỗi xoá bản ghi id ${id} khỏi bảng ${this.getTable()}:`, error.message);
+      if (error.message.includes('foreign key constraint') || error.message.includes('violates foreign key')) {
+        throw new Error('Ca làm việc này đã có dữ liệu chấm công lịch sử, không thể xoá để đảm bảo tính toàn vẹn dữ liệu.');
+      }
+      throw new Error(error.message);
+    }
+    // Dọn dẹp cả trong fallback localStorage
+    const fallbackRaw = localStorage.getItem(`tt_fallback_${this.getTable()}`);
+    if (fallbackRaw) {
+      try {
+        const parsed = JSON.parse(fallbackRaw);
+        if (Array.isArray(parsed)) {
+          localStorage.setItem(
+            `tt_fallback_${this.getTable()}`,
+            JSON.stringify(parsed.filter((item: any) => item.id !== id)),
+          );
+        }
+      } catch {}
+    }
+  }
   async clear(): Promise<void> {}
 
   async getUserAccounts(): Promise<UserAccount[]> {

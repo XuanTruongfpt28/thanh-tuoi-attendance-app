@@ -41,6 +41,5 @@ export async function updateShift(shiftId: string, changes: Partial<Omit<ShiftCo
 
 /** Xoá một ca làm việc theo id. */
 export async function deleteShift(shiftId: string): Promise<void> {
-  const shifts = await getShifts();
-  await adapter.saveAll(shifts.filter((shift) => shift.id !== shiftId));
+  await adapter.removeItem(shiftId);
 }
