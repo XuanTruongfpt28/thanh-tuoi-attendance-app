@@ -209,3 +209,59 @@ export async function getTodayRecordForEmployee(
   return records[records.length - 1];
 }
 
+/**
+ * Tự động dọn dẹp các bức ảnh điểm danh cũ hơn số ngày quy định (mặc định 90 ngày).
+ * Chỉ xóa dữ liệu ảnh Base64 để giải phóng dung lượng database Supabase,
+ * TOÀN BỘ dữ liệu điểm danh, giờ vào, giờ ra, số phút trễ/sớm vẫn được giữ nguyên vĩnh viễn.
+ */
+export async function cleanUpOldPhotos(days: number = 90): Promise<number> {
+  const cutoffTime = Date.now() - days * 24 * 60 * 60 * 1000;
+  const cutoffDate = new Date(cutoffTime).toISOString().split('T')[0];
+
+  let cleanedCount = 0;
+
+  if (storageMode === 'supabase') {
+    try {
+      // 1. Cập nhật trên Supabase: xoá ảnh của các ngày trước cutoffDate (< 90 ngày)
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .update({ check_in_photo: null, check_out_photo: null })
+        .lt('date', cutoffDate)
+        .or('check_in_photo.not.is.null,check_out_photo.not.is.null')
+        .select('id');
+
+      if (!error && data) {
+        cleanedCount = data.length;
+      }
+    } catch (err) {
+      console.warn('Lỗi dọn dẹp ảnh cũ trên Supabase:', err);
+    }
+  }
+
+  // 2. Dọn dẹp cả trong local cache nếu có
+  try {
+    const all = await adapter.getAll();
+    let hasChanges = false;
+    const updated = all.map((r) => {
+      if (r.date < cutoffDate && (r.checkInPhoto || (r as any).checkOutPhoto)) {
+        cleanedCount++;
+        hasChanges = true;
+        return {
+          ...r,
+          checkInPhoto: undefined,
+          checkOutPhoto: undefined,
+        };
+      }
+      return r;
+    });
+
+    if (hasChanges) {
+      await adapter.saveAll(updated);
+    }
+  } catch (err) {
+    console.warn('Lỗi dọn dẹp ảnh local:', err);
+  }
+
+  return cleanedCount;
+}
+

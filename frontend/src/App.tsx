@@ -14,6 +14,7 @@ import { useAttendance } from './hooks/useAttendance';
 import { useAuth } from './hooks/useAuth';
 import { getBranches } from './services/branchService';
 import { cleanUpDemoEmployees } from './services/employeeService';
+import { cleanUpOldPhotos } from './services/attendanceStorage';
 import { Zap } from 'lucide-react';
 
 /**
@@ -60,10 +61,11 @@ export default function App() {
     setNote,
   } = useAttendance(shifts, accounts);
 
-  // Tự động đảm bảo danh sách chi nhánh và dọn dẹp nhân viên demo cũ
+  // Tự động đảm bảo chi nhánh, dọn dẹp nhân viên demo và dọn dẹp ảnh cũ > 90 ngày
   useEffect(() => {
     getBranches();
     cleanUpDemoEmployees();
+    cleanUpOldPhotos(90);
   }, []);
 
   // Tự động chuyển tab phù hợp khi đăng nhập với vai trò khác nhau

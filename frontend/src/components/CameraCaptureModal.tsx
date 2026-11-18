@@ -82,8 +82,22 @@ export function CameraCaptureModal({
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
-    canvas.width = video.videoWidth || 480;
-    canvas.height = video.videoHeight || 480;
+    // Giới hạn độ phân giải 360x360 để ảnh siêu nhẹ (~15KB) nhưng khuôn mặt vẫn rõ nét
+    const maxDim = 360;
+    let w = video.videoWidth || 480;
+    let h = video.videoHeight || 480;
+    if (w > maxDim || h > maxDim) {
+      if (w > h) {
+        h = Math.round((h / w) * maxDim);
+        w = maxDim;
+      } else {
+        w = Math.round((w / h) * maxDim);
+        h = maxDim;
+      }
+    }
+
+    canvas.width = w;
+    canvas.height = h;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -93,8 +107,8 @@ export function CameraCaptureModal({
     ctx.scale(-1, 1);
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Xuất ra base64 jpeg nén nhẹ 0.75 để tiết kiệm dung lượng
-    const photoDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+    // Xuất ra base64 jpeg nén tối ưu 0.6 để siêu tiết kiệm dung lượng database
+    const photoDataUrl = canvas.toDataURL('image/jpeg', 0.6);
     setCapturedPhoto(photoDataUrl);
   };
 
@@ -125,7 +139,7 @@ export function CameraCaptureModal({
         img.onload = () => {
           if (!canvasRef.current) return;
           const canvas = canvasRef.current;
-          const maxDim = 640;
+          const maxDim = 360;
           let w = img.width;
           let h = img.height;
           if (w > maxDim || h > maxDim) {
@@ -141,7 +155,7 @@ export function CameraCaptureModal({
           canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, w, h);
-          setCapturedPhoto(canvas.toDataURL('image/jpeg', 0.75));
+          setCapturedPhoto(canvas.toDataURL('image/jpeg', 0.6));
         };
         img.src = result;
       }
